@@ -19,7 +19,7 @@ import java.util.Properties;
  */
 public class CodeGenerator {
 
-    private static final String TABLE = "sys_user";//表名
+    private static final String TABLE = "dynamic";//表名
     private static final String PACKAGE_NAME = "com.zf.partnerback";//路径
     private static final String AUTHOR = "ZF";
 

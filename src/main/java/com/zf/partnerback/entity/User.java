@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 import cn.hutool.core.annotation.Alias;
 import com.zf.partnerback.common.LDTConfig;
@@ -17,6 +18,7 @@ import io.swagger.annotations.ApiModelProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,6 +32,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Data
 @TableName("sys_user")
 @ApiModel(value = "User对象", description = "")
 public class User implements Serializable {
@@ -53,30 +56,27 @@ public class User implements Serializable {
     @ApiModelProperty("昵称")
     @Alias("昵称")
     private String name;
-
     // 邮箱
     @ApiModelProperty("邮箱")
     @Alias("邮箱")
     private String email;
-
-    // 用户唯一id
-    @ApiModelProperty("用户唯一id")
-    @Alias("用户唯一id")
+    @ApiModelProperty("用户唯一标识")
+    @Alias("用户唯一标识")
     private String uid;
 
-    // 逻辑删除 0存在  id删除
-    @ApiModelProperty("逻辑删除 0存在  id删除")
-    @Alias("逻辑删除 0存在  id删除")
-    @TableLogic(value = "0", delval = "id")
+    @TableLogic(value = "0", delval = "id")//默认未删除是0，删除是id
+    @ApiModelProperty("逻辑删除")
+    @Alias("逻辑删除")
     private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)
-    @JsonDeserialize(using = LDTConfig.CmzLdtDeSerializer.class)
-    @JsonSerialize(using = LDTConfig.CmzLdtSerializer.class)
+    @ApiModelProperty("创建时间")
+    @Alias("创建时间")
     private LocalDateTime createTime;
 
     @TableField(fill = FieldFill.INSERT_UPDATE)
-    @JsonDeserialize(using = LDTConfig.CmzLdtDeSerializer.class)
-    @JsonSerialize(using = LDTConfig.CmzLdtSerializer.class)
+    @ApiModelProperty("更新时间")
+    @Alias("更新时间")
     private LocalDateTime updateTime;
+
 }

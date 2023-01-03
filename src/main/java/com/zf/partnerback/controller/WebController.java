@@ -2,15 +2,13 @@ package com.zf.partnerback.controller;
 
 import com.zf.partnerback.common.Result;
 import com.zf.partnerback.entity.User;
+import com.zf.partnerback.entity.domain.DTO.UserRequest;
 import com.zf.partnerback.service.IUserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * @ClassName: WebController
@@ -42,9 +40,30 @@ public class WebController {
 
     @ApiOperation(value = "用户登录接口")
     @PostMapping(value = "/login")
-    public Result login(@RequestBody User user){
+    public Result login(@RequestBody User user) {
 
-       User res= userService.login(user);
+        User res = userService.login(user);
         return Result.success(res);
+    }
+
+    @ApiOperation(value = "用户注册接口")
+    @PostMapping(value = "/register")
+    public Result register(@RequestBody UserRequest user) {
+        User res = userService.register(user);
+        return Result.success(res);
+    }
+
+    @ApiOperation(value = "邮件发送接口")
+    @GetMapping("/email")
+    public Result sendEmail(@RequestParam String email, @RequestParam String type) {//@RequestParam 接收路径?**&***拼接方式
+        userService.sendEmail(email, type);
+        return Result.success();
+    }
+
+    @ApiOperation(value = "重置密码")
+    @PostMapping("/password/reset")
+    public Result resetPassword(@RequestBody UserRequest userRequest) {//@RequestParam 接收路径?**&***拼接方式
+      String newPass = userService.resetPassword(userRequest);
+        return Result.success(newPass);
     }
 }

@@ -77,7 +77,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public User register(UserRequest user) {
         //校验邮箱
-        validateEmail(user.getCode());
+        //校验验证码
+        validateEmail(user.getEmail(),user.getCode());
         try {
             User user1 = new User();
             BeanUtils.copyProperties(user, user1);
@@ -103,6 +104,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     //邮件发送验证码
     @Override
     public void sendEmail(String email, String type) {
+
         String code = RandomUtil.randomNumbers(6);
         log.info("本次验证码为:" + code);
         String context = "<b>尊敬的用户：</b><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;您好，【Partner交友网】提醒您，本次的验证码是:<b>{}</b>，有效期5分钟。<br><br><br><b>【Partner交友网】</b>";
@@ -121,8 +123,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         ThreadUtil.execAsync(() -> {//多线程 异步 执行任务，不会影响后面的操作
             emailUtils.sendHtml("Partner交友网", html, email);
         });
+        String key=email+code;//将邮箱与验证码结合存储，方便后期校验
         //模拟缓存
-        CODE_MAP.put(code, System.currentTimeMillis());//将验证码作为键存储
+        CODE_MAP.put(key, System.currentTimeMillis());//将验证码作为键存储
     }
 
     /**
@@ -138,7 +141,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new ServiceException("未找到该用户");
         }
         //校验验证码
-        validateEmail(userRequest.getCode());
+        validateEmail(userRequest.getEmail(),userRequest.getCode());
         String newPass = "123456";
         dbUser.setPassword(newPass);
         try {
@@ -149,20 +152,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return newPass;
     }
 
+
     /**
      * 校验邮箱验证码
      *
      * @param code
      */
-    private void validateEmail(String code) {
+    private void validateEmail(String email,String code) {
+        String key=email+code;
         //校验邮箱验证码
-        Long timestamp = CODE_MAP.get(code);//根据前台传来的验证码作为键获取
+        Long timestamp = CODE_MAP.get(key);//根据前台传来的验证码作为键获取
         if (timestamp == null) {
-            throw new ServiceException("您输入的验证码有误");
+            throw new ServiceException("请先校验邮箱");
         }
         if (timestamp + TIME_IN_MS5 < System.currentTimeMillis()) {
             throw new ServiceException("验证码已过期");
         }
-        CODE_MAP.remove(code);//验证之后将验证码删除
+        CODE_MAP.remove(key);//验证之后将验证码删除
+    }
+    //数据库优化
+    @Override
+    public void select1() {
+        userMapper.select1();
     }
 }

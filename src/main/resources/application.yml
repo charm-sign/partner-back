@@ -10,7 +10,9 @@ spring:
     hikari:
       minimum-idle: 10
       connection-test-query: SELECT 1
-  # swagger
+
+
+
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
@@ -33,4 +35,6 @@ mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-
+#logging:
+#  level:
+#    root: debug

@@ -41,9 +41,11 @@ public class WebController {
     @ApiOperation(value = "用户登录接口")
     @PostMapping(value = "/login")
     public Result login(@RequestBody User user) {
-
+        long start = System.currentTimeMillis();
         User res = userService.login(user);
+        log.info("登录成功，耗时：{}ms", System.currentTimeMillis() - start);
         return Result.success(res);
+
     }
 
     @ApiOperation(value = "用户注册接口")
@@ -63,7 +65,7 @@ public class WebController {
     @ApiOperation(value = "重置密码")
     @PostMapping("/password/reset")
     public Result resetPassword(@RequestBody UserRequest userRequest) {//@RequestParam 接收路径?**&***拼接方式
-      String newPass = userService.resetPassword(userRequest);
+        String newPass = userService.resetPassword(userRequest);
         return Result.success(newPass);
     }
 }

@@ -1,5 +1,6 @@
 package com.zf.partnerback.service.impl;
 
+import cn.dev33.satoken.secure.BCrypt;
 import cn.dev33.satoken.secure.SaSecureUtil;
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
@@ -68,7 +69,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (dbUser == null) {
             throw new ServiceException("未找到用户");
         }
-        if (! SaSecureUtil.md5(user.getPassword()).equals(dbUser.getPassword())) {
+        if (!BCrypt.checkpw(user.getPassword(),dbUser.getPassword())) {
             throw new ServiceException("用户名或密码错误");
         }
         StpUtil.login(dbUser.getUid());//证明登陆了，自动存储相关信息
@@ -134,7 +135,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         System.out.println("key" + key);
         validateEmail(key, user.getCode());
         try {
-           user.setPassword(SaSecureUtil.md5(user.getPassword()));
+           user.setPassword(BCrypt.hashpw(user.getPassword()));
             User user1 = new User();
             BeanUtils.copyProperties(user, user1);
             User dbUser = getOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user1.getUsername()));
@@ -142,7 +143,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 throw new ServiceException("该用户已存在");
             }
             if (StrUtil.isBlank(user1.getPassword())) {
-                user1.setPassword(SaSecureUtil.md5("123456"));//设置默认密码
+                user1.setPassword(BCrypt.hashpw("123456"));//设置默认密码
             }
 
             user1.setUid(IdUtil.fastSimpleUUID());//设置随机用户唯一标识
@@ -174,7 +175,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String key = Constants.EMAIL_CODE + EmailCodeEnum.RESET_PASSWORD.getValue() + userRequest.getEmail();
         validateEmail(key, userRequest.getCode());
         String newPass = "123456";
-        dbUser.setPassword(newPass);
+        dbUser.setPassword(BCrypt.hashpw(newPass));
         try {
             updateById(dbUser);
         } catch (Exception e) {

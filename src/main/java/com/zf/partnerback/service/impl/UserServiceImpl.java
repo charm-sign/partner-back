@@ -1,17 +1,18 @@
 package com.zf.partnerback.service.impl;
 
+import cn.dev33.satoken.secure.SaSecureUtil;
+import cn.dev33.satoken.stp.SaTokenInfo;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
-import com.baomidou.mybatisplus.generator.IFill;
 import com.zf.partnerback.common.Constants;
-import com.zf.partnerback.common.Result;
 import com.zf.partnerback.common.enums.EmailCodeEnum;
 import com.zf.partnerback.entity.User;
+
+import com.zf.partnerback.entity.domain.DTO.LoginDTO;
 import com.zf.partnerback.entity.domain.DTO.UserRequest;
 import com.zf.partnerback.exception.ServiceException;
 import com.zf.partnerback.mapper.UserMapper;
@@ -19,17 +20,11 @@ import com.zf.partnerback.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zf.partnerback.utils.EmailUtils;
 import com.zf.partnerback.utils.RedisUtils;
-import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,7 +55,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
      * @return
      */
     @Override
-    public User login(User user) {
+    public LoginDTO login(User user) {
         User dbUser = null;
         LambdaQueryWrapper<User> lqw = new LambdaQueryWrapper<>();
         //允许通过用户名以及邮箱登录
@@ -73,50 +68,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (dbUser == null) {
             throw new ServiceException("未找到用户");
         }
-        if (!user.getPassword().equals(dbUser.getPassword())) {
+        if (! SaSecureUtil.md5(user.getPassword()).equals(dbUser.getPassword())) {
             throw new ServiceException("用户名或密码错误");
         }
-        return dbUser;
+        StpUtil.login(dbUser.getUid());//证明登陆了，自动存储相关信息
+        // 会在redis记录用户id与token
+//       用户id satoken:login:session:   会包含其它信息，也可存储用户信息
+//       登录的token satoken:login:token:  值是存储的用户id
+        StpUtil.getSession().set("userInfo", dbUser);//此操作就是将用户信息存入
+        SaTokenInfo tokenInfo = StpUtil.getTokenInfo();
+        String tokenValue = tokenInfo.getTokenValue();//token值
+        return LoginDTO.builder().user(dbUser).token(tokenValue).build();
     }
 
     //邮件发送验证码
     @Override
     public void sendEmail(String email, String type) {
-
         //通过枚举校验验证类型，枚举中定义了支持的类型
         String emailPrefix = EmailCodeEnum.getValue(type);  //将其作为键的前缀
-
         if (StrUtil.isBlank(emailPrefix)) {
             throw new ServiceException("不支持的验证类型");
         }
         //1分钟内不能重复发送
-        String key=Constants.EMAIL_CODE+emailPrefix+email;
+        String key = Constants.EMAIL_CODE + emailPrefix + email;
         Long expireTime = redisUtils.getExpireTime(key);//倒计时
-        if (expireTime!=null&&expireTime>4*60){
+        if (expireTime != null && expireTime > 4 * 60) {
             throw new ServiceException("发送次数过于频繁");
         }
-        Integer code =Integer.valueOf(RandomUtil.randomNumbers(6));
+        Integer code = Integer.valueOf(RandomUtil.randomNumbers(6));
         log.info("本次验证码为:" + code);
         String context = "<b>尊敬的用户：</b><br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;您好，【Partner交友网】提醒您，本次的验证码是:<b>{}</b>，有效期5分钟。<br><br><br><b>【Partner交友网】</b>";
         String html = StrUtil.format(context, code);//拼接进去{}
         User user = getOne(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
-        if ("REGISTER".equals(type)) {//如果是注册
+        if (EmailCodeEnum.REGISTER.equals(EmailCodeEnum.getEnum(type))) {//如果是注册
             //校验邮箱是否已注册，邮箱是唯一的
             if (user != null) {
                 throw new ServiceException("该邮箱已注册");
             }
-        } else if ("RESETPASSWORD".equals(type)) {
+        } else if (EmailCodeEnum.RESET_PASSWORD.equals(EmailCodeEnum.getEnum(type))) {
+//            System.out.println("***************"+EmailCodeEnum.RESET_PASSWORD);//RESET_PASSWORD
+//            System.out.println("***************"+EmailCodeEnum.getEnum(type));//RESET_PASSWORD
             if (user == null) {
                 throw new ServiceException("该邮箱未注册");
             }
         }
         ThreadUtil.execAsync(() -> {//多线程 异步 执行任务，不会影响后面的操作
-            emailUtils.sendHtml("Partner交友网", html, email);
+            emailUtils.sendHtml("Partner交友网", html, email); //应该此步骤之后再缓存验证码，但发送的服务可能玩坏，所以直接存
         });
-//        String key = Constants.EMAIL_CODE + emailPrefix + email;//将邮箱与验证码结合作为键存储，方便后期校验
         //缓存验证码并设置有效时长5分钟 （key在规定时间之后会失效）
         redisUtils.setCacheObject(key, code, TIME_IN_MS5, TimeUnit.MILLISECONDS);
-//        CODE_MAP.put(key, System.currentTimeMillis());
+
     }
 
     /**
@@ -129,19 +130,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public User register(UserRequest user) {
         //校验邮箱
         //校验验证码
-        String key=Constants.EMAIL_CODE+EmailCodeEnum.REGISTER.getValue()+user.getEmail();
-        System.out.println("key"+key);
+        String key = Constants.EMAIL_CODE + EmailCodeEnum.REGISTER.getValue() + user.getEmail();
+        System.out.println("key" + key);
         validateEmail(key, user.getCode());
         try {
+           user.setPassword(SaSecureUtil.md5(user.getPassword()));
             User user1 = new User();
             BeanUtils.copyProperties(user, user1);
             User dbUser = getOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user1.getUsername()));
             if (dbUser != null) {
                 throw new ServiceException("该用户已存在");
             }
-            if (StrUtil.isBlank(user.getPassword())) {
-                user.setPassword("123456");//设置默认密码
+            if (StrUtil.isBlank(user1.getPassword())) {
+                user1.setPassword(SaSecureUtil.md5("123456"));//设置默认密码
             }
+
             user1.setUid(IdUtil.fastSimpleUUID());//设置随机用户唯一标识
             boolean b = save(user1);
             if (!b) {
@@ -168,7 +171,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new ServiceException("未找到该用户");
         }
         //校验验证码
-        String key=Constants.EMAIL_CODE+EmailCodeEnum.RESET_PASSWORD.getValue()+userRequest.getEmail();
+        String key = Constants.EMAIL_CODE + EmailCodeEnum.RESET_PASSWORD.getValue() + userRequest.getEmail();
         validateEmail(key, userRequest.getCode());
         String newPass = "123456";
         dbUser.setPassword(newPass);
@@ -179,6 +182,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         return newPass;
     }
+
     /**
      * 校验邮箱验证码
      *

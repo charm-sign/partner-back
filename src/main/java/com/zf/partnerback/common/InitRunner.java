@@ -3,6 +3,7 @@ package com.zf.partnerback.common;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.http.HttpUtil;
 import com.zf.partnerback.service.IUserService;
+import com.zf.partnerback.utils.RedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
@@ -20,7 +21,8 @@ import org.springframework.stereotype.Component;
 public class InitRunner implements ApplicationRunner { //项目启动就执行这个里面的功能
     @Autowired
     IUserService userService;
-
+@Autowired
+    RedisUtils redisUtils;
     /**
      * 项目启动成功之后就会执行此方法，达到优化登录目的。
      *
@@ -31,6 +33,8 @@ public class InitRunner implements ApplicationRunner { //项目启动就执行�
     public void run(ApplicationArguments args) throws Exception {
 //发送一次异步web请求，初始化tomcat连接
         ThreadUtil.execAsync(()->{
+            redisUtils.ping();
+            log.info("手动初始化redis连接");
             userService.select1();
             log.info("手动初始化数据库成功");
             HttpUtil.get("http://localhost:9090");

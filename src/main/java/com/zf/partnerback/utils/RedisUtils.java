@@ -1,6 +1,7 @@
 package com.zf.partnerback.utils;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnectionCommands;
 import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -247,5 +248,12 @@ public class RedisUtils
     public Collection<String> keys(final String pattern)
     {
         return redisTemplate.keys(pattern);
+    }
+
+    /**
+     * ping操作用于检测连接，也可用于初始化redis连接
+     */
+    public  void ping(){
+        Object response = redisTemplate.execute(RedisConnectionCommands::ping);
     }
 }

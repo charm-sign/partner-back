@@ -1,8 +1,9 @@
 package com.zf.partnerback.service;
 
-import com.zf.partnerback.common.Result;
 import com.zf.partnerback.entity.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+
+import com.zf.partnerback.entity.domain.DTO.LoginDTO;
 import com.zf.partnerback.entity.domain.DTO.UserRequest;
 
 /**
@@ -15,7 +16,7 @@ import com.zf.partnerback.entity.domain.DTO.UserRequest;
  */
 public interface IUserService extends IService<User> {
 
-    User login(User user);
+    LoginDTO login(User user);
 
     User register(UserRequest user);
 

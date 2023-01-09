@@ -2,6 +2,8 @@ package com.zf.partnerback.controller;
 
 import com.zf.partnerback.common.Result;
 import com.zf.partnerback.entity.User;
+
+import com.zf.partnerback.entity.domain.DTO.LoginDTO;
 import com.zf.partnerback.entity.domain.DTO.UserRequest;
 import com.zf.partnerback.service.IUserService;
 import io.swagger.annotations.Api;
@@ -42,7 +44,7 @@ public class WebController {
     @PostMapping(value = "/login")
     public Result login(@RequestBody User user) {
         long start = System.currentTimeMillis();
-        User res = userService.login(user);
+        LoginDTO res = userService.login(user);
         log.info("登录成功，耗时：{}ms", System.currentTimeMillis() - start);
         return Result.success(res);
 
@@ -51,8 +53,8 @@ public class WebController {
     @ApiOperation(value = "用户注册接口")
     @PostMapping(value = "/register")
     public Result register(@RequestBody UserRequest user) {
-        User res = userService.register(user);
-        return Result.success(res);
+        userService.register(user);
+        return Result.success();
     }
 
     @ApiOperation(value = "邮件发送接口")

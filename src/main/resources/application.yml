@@ -81,4 +81,9 @@ sa-token:
   token-prefix: Bearer
   # jwt生成密钥
   jwt-secret-key: asdaafafrsifhueuiwyurfewbfjsdafjk
-
+#  文件上传路径
+file:
+  upload:
+    path: D:\IDEA\partner\partner-back
+  download:
+    ip: 127.0.0.1
